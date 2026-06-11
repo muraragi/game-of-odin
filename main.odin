@@ -1,6 +1,5 @@
 package main
 
-import "core:fmt"
 import rl "vendor:raylib"
 
 SCREEN_WIDTH :: 720 + (16 * 10)
