@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:mem"
 import rl "vendor:raylib"
 
 SCREEN_WIDTH :: 720 + (16 * 30)
@@ -64,6 +65,34 @@ get_alive_neighbours_count :: proc(target_cell: ^Cell, cells: ^[COLS * ROWS]Cell
 }
 
 main :: proc() {
+	when ODIN_DEBUG {
+		track: mem.Tracking_Allocator
+		mem.tracking_allocator_init(&track, context.allocator)
+		context.allocator = mem.tracking_allocator(&track)
+
+		defer {
+			if len(track.allocation_map) > 0 {
+				fmt.eprintf("=== %v allocations not freed ===\n", len(track.allocation_map))
+				for _, entry in track.allocation_map {
+					fmt.eprintf("- leaked %v bytes at %v\n", entry.size, entry.location)
+				}
+			}
+
+			if len(track.bad_free_array) > 0 {
+				fmt.eprintf("=== %v bad frees ===\n", len(track.bad_free_array))
+				for entry in track.bad_free_array {
+					fmt.eprintf("- bad free of %p at %v\n", entry.memory, entry.location)
+				}
+			}
+
+			if len(track.allocation_map) == 0 && len(track.bad_free_array) == 0 {
+				fmt.eprintln("No memory leaks detected")
+			}
+
+			mem.tracking_allocator_destroy(&track)
+		}
+	}
+
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Game of Life")
 	rl.SetTargetFPS(120)
 
@@ -97,8 +126,6 @@ main :: proc() {
 		}
 		delete(saved_patterns)
 	}
-
-	fmt.printfln("patterns: %v", saved_patterns)
 
 	for !rl.WindowShouldClose() {
 
