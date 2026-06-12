@@ -1,13 +1,15 @@
 package main
 
+import "core:fmt"
 import rl "vendor:raylib"
 
-SCREEN_WIDTH :: 720 + (16 * 10)
-SCREEN_HEIGHT :: 640 + 100
+SCREEN_WIDTH :: 720 + (16 * 30)
+SCREEN_HEIGHT :: 640 + (16 * 5)
 GRID_SIZE :: 16
-COLS :: SCREEN_WIDTH / GRID_SIZE
-ROWS :: SCREEN_HEIGHT / GRID_SIZE
-CELL_NEIGHBOURS :: [8][2]i32{{1, 0}, {1, 1}, {0, 1}, {-1, 0}, {-1, -1}, {0, -1}, {-1, 1}, {1, -1}}
+PADDING :: 80
+COLS :: (SCREEN_WIDTH - PADDING) / GRID_SIZE
+ROWS :: (SCREEN_HEIGHT - PADDING) / GRID_SIZE
+CELL_NEIGHBOURS :: [8][2]int{{1, 0}, {1, 1}, {0, 1}, {-1, 0}, {-1, -1}, {0, -1}, {-1, 1}, {1, -1}}
 
 Cell_State :: enum {
 	DEAD,
@@ -17,7 +19,7 @@ Cell_State :: enum {
 Cell :: struct {
 	state:    Cell_State,
 	pos:      [2]f32,
-	grid_pos: [2]i32,
+	grid_pos: [2]int,
 }
 
 Timer :: struct {
@@ -40,15 +42,15 @@ tick_timer :: proc(timer: ^Timer, elapsed: f32) -> bool {
 	}
 }
 
-get_alive_neighbours_count :: proc(target_cell: ^Cell, cells: ^[COLS * ROWS]Cell) -> i32 {
-	neighbours_count: i32 = 0
+get_alive_neighbours_count :: proc(target_cell: ^Cell, cells: ^[COLS * ROWS]Cell) -> int {
+	neighbours_count: int = 0
 
 	for neighbour in CELL_NEIGHBOURS {
 		neighbour_grid_pos := target_cell.grid_pos + neighbour
 		if neighbour_grid_pos.x < 0 ||
-		   neighbour_grid_pos.x >= i32(COLS) ||
+		   neighbour_grid_pos.x >= int(COLS) ||
 		   neighbour_grid_pos.y < 0 ||
-		   neighbour_grid_pos.y >= i32(ROWS) {
+		   neighbour_grid_pos.y >= int(ROWS) {
 			continue
 		}
 
@@ -73,21 +75,44 @@ main :: proc() {
 			cells[i] = Cell {
 				state    = .DEAD,
 				pos      = {f32(x * GRID_SIZE), f32(y * GRID_SIZE)},
-				grid_pos = {i32(x), i32(y)},
+				grid_pos = {int(x), int(y)},
 			}
 		}
 	}
 
 	simulation_timer := create_timer(0.2)
+	board_origin := [2]f32{f32(PADDING) / 2, f32(PADDING) / 2}
+	board_rect := rl.Rectangle {
+		board_origin.x,
+		board_origin.y,
+		f32(COLS * GRID_SIZE),
+		f32(ROWS * GRID_SIZE),
+	}
+
+	saved_patterns := parse_saved_patterns()
+	defer {
+		for &pattern in saved_patterns {
+			delete(pattern.offsets)
+			delete(pattern.name)
+		}
+		delete(saved_patterns)
+	}
+
+	fmt.printfln("patterns: %v", saved_patterns)
+
 	for !rl.WindowShouldClose() {
 
 		if rl.IsMouseButtonPressed(.LEFT) {
 			mouse_pos := rl.GetMousePosition()
-			grid_x := i32(mouse_pos.x / GRID_SIZE)
-			grid_y := i32(mouse_pos.y / GRID_SIZE)
-			cell_index := COLS * grid_y + grid_x
 
-			cells[cell_index].state = .DEAD if cells[cell_index].state == .ALIVE else .ALIVE
+			if rl.CheckCollisionPointRec(mouse_pos, board_rect) {
+				local_pos := mouse_pos - board_origin
+				grid_x := int(local_pos.x / GRID_SIZE)
+				grid_y := int(local_pos.y / GRID_SIZE)
+				cell_index := COLS * grid_y + grid_x
+
+				cells[cell_index].state = .DEAD if cells[cell_index].state == .ALIVE else .ALIVE
+			}
 		}
 
 		if !simulation_timer.paused && tick_timer(&simulation_timer, rl.GetFrameTime()) {
@@ -109,11 +134,11 @@ main :: proc() {
 
 		for cell in cells {
 			if cell.state == .ALIVE {
-				rl.DrawRectangleV(cell.pos, GRID_SIZE, rl.BEIGE)
+				rl.DrawRectangleV(cell.pos + board_origin, GRID_SIZE, rl.BEIGE)
 			} else {
 				rl.DrawRectangleLines(
-					i32(cell.pos.x),
-					i32(cell.pos.y),
+					i32(cell.pos.x + board_origin.x),
+					i32(cell.pos.y + board_origin.y),
 					GRID_SIZE,
 					GRID_SIZE,
 					rl.BEIGE,
@@ -122,7 +147,7 @@ main :: proc() {
 		}
 
 		if rl.GuiButton(
-			rl.Rectangle{24, 24, 120, 30},
+			rl.Rectangle{PADDING / 2, 16, 120, 20},
 			rl.GuiIconText(.ICON_PLAYER_PLAY, "RUN SIMULATION"),
 		) {
 			simulation_timer.paused = !simulation_timer.paused
