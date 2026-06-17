@@ -1,5 +1,11 @@
 package main
 
+SCREEN_WIDTH :: 720 + (16 * 30)
+SCREEN_HEIGHT :: 640 + (16 * 5)
+PADDING_X :: 80
+PADDING_Y :: 116
+GRID_SIZE :: 16
+
 Timer :: struct {
 	interval:    f32,
 	accumulator: f32,

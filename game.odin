@@ -43,25 +43,30 @@ create_board :: proc() -> Board {
 	return board
 }
 
-handle_input :: proc(board: ^Board) {
+handle_input :: proc(state: ^Game_State) {
 	if rl.IsMouseButtonPressed(.LEFT) {
 		mouse_pos := rl.GetMousePosition()
 
 		if rl.CheckCollisionPointRec(mouse_pos, BOARD_RECT) {
 			local_pos := mouse_pos - BOARD_ORIGIN
-			grid_x := int(local_pos.x / GRID_SIZE)
-			grid_y := int(local_pos.y / GRID_SIZE)
-			cell_index := COLS * grid_y + grid_x
+			grid_x := i32(local_pos.x / GRID_SIZE)
+			grid_y := i32(local_pos.y / GRID_SIZE)
 
-			board[cell_index].state = .DEAD if board[cell_index].state == .ALIVE else .ALIVE
+			apply_pattern(&state.board, state.selected_pattern, {grid_x, grid_y})
 		}
 	}
 }
 
-run_simulation :: proc(simulation_timer: ^Timer, board: Board) -> Board {
-	next_board := board
+apply_pattern :: proc(board: ^Board, pattern: ^Pattern, clicked_cell: [2]i32) {
+	cell_index := COLS * clicked_cell.y + clicked_cell.x
 
-	if !simulation_timer.paused && tick_timer(simulation_timer, rl.GetFrameTime()) {
+	board[cell_index].state = .DEAD if board[cell_index].state == .ALIVE else .ALIVE
+}
+
+run_simulation :: proc(state: ^Game_State) {
+	next_board := state.board
+
+	if !state.simulation_timer.paused && tick_timer(&state.simulation_timer, rl.GetFrameTime()) {
 		for &cell, index in next_board {
 			alive_neighbours := get_alive_neighbours_count(&cell, &next_board)
 
@@ -73,7 +78,7 @@ run_simulation :: proc(simulation_timer: ^Timer, board: Board) -> Board {
 		}
 	}
 
-	return next_board
+	state.board = next_board
 }
 
 get_alive_neighbours_count :: proc(target_cell: ^Cell, cells: ^Board) -> int {
