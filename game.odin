@@ -2,12 +2,10 @@ package main
 
 import rl "vendor:raylib"
 
-GRID_SIZE :: 16
-PADDING :: 80
-COLS :: (SCREEN_WIDTH - PADDING) / GRID_SIZE
-ROWS :: (SCREEN_HEIGHT - PADDING) / GRID_SIZE
+COLS :: (SCREEN_WIDTH - PADDING_X) / GRID_SIZE
+ROWS :: (SCREEN_HEIGHT - PADDING_Y) / GRID_SIZE
 CELL_NEIGHBOURS :: [8][2]int{{1, 0}, {1, 1}, {0, 1}, {-1, 0}, {-1, -1}, {0, -1}, {-1, 1}, {1, -1}}
-BOARD_ORIGIN :: [2]f32{f32(PADDING) / 2, f32(PADDING) / 2}
+BOARD_ORIGIN :: [2]f32{f32(PADDING_X) / 2, f32(PADDING_Y) / 2}
 BOARD_RECT :: rl.Rectangle {
 	BOARD_ORIGIN.x,
 	BOARD_ORIGIN.y,
@@ -76,6 +74,27 @@ run_simulation :: proc(simulation_timer: ^Timer, board: Board) -> Board {
 	}
 
 	return next_board
+}
+
+get_alive_neighbours_count :: proc(target_cell: ^Cell, cells: ^Board) -> int {
+	neighbours_count: int = 0
+
+	for neighbour in CELL_NEIGHBOURS {
+		neighbour_grid_pos := target_cell.grid_pos + neighbour
+		if neighbour_grid_pos.x < 0 ||
+		   neighbour_grid_pos.x >= int(COLS) ||
+		   neighbour_grid_pos.y < 0 ||
+		   neighbour_grid_pos.y >= int(ROWS) {
+			continue
+		}
+
+		cell_index := COLS * neighbour_grid_pos.y + neighbour_grid_pos.x
+		if cells[cell_index].state == .ALIVE {
+			neighbours_count += 1
+		}
+	}
+
+	return neighbours_count
 }
 
 draw_board :: proc(board: ^Board) {
