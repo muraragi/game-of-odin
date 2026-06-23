@@ -7,7 +7,7 @@ import rl "vendor:raylib"
 Game_State :: struct {
 	simulation_timer:      Timer,
 	board:                 Board,
-	selected_pattern:      ^Pattern,
+	selected_pattern:      Pattern,
 	patterns_scroll_state: rl.Vector2,
 }
 
@@ -63,7 +63,7 @@ main :: proc() {
 	game_state := Game_State {
 		board            = create_board(),
 		simulation_timer = create_timer(0.2),
-		selected_pattern = &resources.saved_patterns[0],
+		selected_pattern = resources.saved_patterns[0],
 	}
 
 	for !rl.WindowShouldClose() {

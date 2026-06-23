@@ -1,5 +1,6 @@
 package main
 
+import "core:fmt"
 import rl "vendor:raylib"
 
 COLS :: (SCREEN_WIDTH - PADDING_X) / GRID_SIZE
@@ -46,29 +47,35 @@ create_board :: proc() -> Board {
 handle_input :: proc(state: ^Game_State) {
 	if rl.IsMouseButtonPressed(.LEFT) {
 		mouse_pos := rl.GetMousePosition()
-
 		if rl.CheckCollisionPointRec(mouse_pos, BOARD_RECT) {
 			local_pos := mouse_pos - BOARD_ORIGIN
-			grid_x := i32(local_pos.x / GRID_SIZE)
-			grid_y := i32(local_pos.y / GRID_SIZE)
+			grid_x := int(local_pos.x / GRID_SIZE)
+			grid_y := int(local_pos.y / GRID_SIZE)
 
-			apply_pattern(&state.board, state.selected_pattern, {grid_x, grid_y})
+			apply_pattern(&state.board, &state.selected_pattern, {grid_x, grid_y})
 		}
 	}
 }
 
-apply_pattern :: proc(board: ^Board, pattern: ^Pattern, clicked_cell: [2]i32) {
-	cell_index := COLS * clicked_cell.y + clicked_cell.x
+apply_pattern :: proc(board: ^Board, pattern: ^Pattern, clicked_cell: [2]int) {
+	for offset in pattern.offsets {
+		target_x := clicked_cell.x + offset.x
+		target_y := clicked_cell.y + offset.y
+		if target_x < 0 || target_x >= COLS || target_y < 0 || target_y >= ROWS {
+			continue
+		}
 
-	board[cell_index].state = .DEAD if board[cell_index].state == .ALIVE else .ALIVE
+		cell_index := COLS * target_y + target_x
+		board[cell_index].state = .DEAD if board[cell_index].state == .ALIVE else .ALIVE
+	}
 }
 
 run_simulation :: proc(state: ^Game_State) {
 	next_board := state.board
 
 	if !state.simulation_timer.paused && tick_timer(&state.simulation_timer, rl.GetFrameTime()) {
-		for &cell, index in next_board {
-			alive_neighbours := get_alive_neighbours_count(&cell, &next_board)
+		for &cell, index in state.board {
+			alive_neighbours := get_alive_neighbours_count(&cell, &state.board)
 
 			if alive_neighbours < 2 || alive_neighbours >= 4 {
 				next_board[index].state = .DEAD
